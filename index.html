@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tony's Trips</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body oncontextmenu="return false;" class="h-screen w-screen flex flex-col">
+
+    <header class="glass-panel w-full py-4 px-6 flex justify-between items-center z-20">
+        <h1 class="text-3xl font-bold tracking-widest title-font">
+            Tony's trips
+        </h1>
+        
+        <div class="flex items-center gap-4">
+            <div id="admin-header-controls" class="hidden flex gap-2">
+                <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-lg transition-colors flex items-center gap-2">
+                    <i class="fas fa-download"></i> Respaldar Datos (.json)
+                </button>
+                <label class="bg-purple-600 hover:bg-purple-500 cursor-pointer text-white font-bold py-2 px-4 rounded shadow-lg transition-colors flex items-center gap-2">
+                    <i class="fas fa-upload"></i> Restaurar
+                    <input type="file" accept=".json" class="hidden" onchange="importData(event)">
+                </label>
+            </div>
+            
+            <button onclick="promptLogin()" class="text-gray-300 hover:text-white transition-colors" title="Acceso Administrador">
+                <i class="fas fa-lock text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow relative flex justify-center items-center p-4 z-10" id="map-container">
+        </main>
+
+    <div id="gallery-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-glass p-4 sm:p-8 transition-opacity duration-300 opacity-0">
+        <div class="relative w-full max-w-6xl h-full flex flex-col bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-700">
+            
+            <div class="flex justify-between items-center p-4 bg-black bg-opacity-50 border-b border-gray-800">
+                <h2 id="gallery-title" class="text-2xl font-bold text-white"></h2>
+                <div class="flex gap-4 items-center">
+                    <a id="wiki-link" href="#" target="_blank" class="text-blue-400 hover:text-blue-300 underline text-sm flex items-center gap-1">
+                        <i class="fab fa-wikipedia-w"></i> Wikipedia
+                    </a>
+                    <button onclick="closeGallery()" class="text-gray-400 hover:text-white transition-colors text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="admin-controls" class="hidden bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
+                <span class="text-yellow-400 font-bold text-sm"><i class="fas fa-user-shield"></i> Panel Admin</span>
+                <div class="flex gap-3">
+                    <button id="btn-delete-photo" onclick="deleteCurrentPhoto()" class="bg-red-600 hover:bg-red-500 text-white text-sm py-1 px-3 rounded flex items-center gap-1">
+                        <i class="fas fa-trash"></i> Eliminar Foto
+                    </button>
+                    <label class="bg-green-600 hover:bg-green-500 cursor-pointer text-white text-sm py-1 px-3 rounded flex items-center gap-1">
+                        <i class="fas fa-upload"></i> Subir Foto
+                        <input type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+                <div class="flex-grow relative flex items-center justify-center bg-black min-h-[50vh]">
+                    <p id="empty-msg" class="hidden text-gray-500 text-lg">No hay fotos disponibles para este estado.</p>
+                    <img id="main-image" src="" alt="Foto" class="max-w-full max-h-full object-contain hidden pointer-events-none" draggable="false">
+                    
+                    <button id="btn-prev" onclick="prevPhoto()" class="hidden absolute left-4 text-white text-4xl hover:text-gray-300 drop-shadow-lg p-2"><i class="fas fa-chevron-left"></i></button>
+                    <button id="btn-next" onclick="nextPhoto()" class="hidden absolute right-4 text-white text-4xl hover:text-gray-300 drop-shadow-lg p-2"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                
+                <div class="w-full md:w-80 flex flex-col bg-gray-900 border-l border-gray-800">
+                    <div class="p-4 flex-grow flex flex-col">
+                        <h3 class="text-sm text-gray-400 uppercase tracking-wider mb-2">Descripción</h3>
+                        <p id="desc-viewer" class="text-gray-200 text-sm flex-grow overflow-y-auto hidden"></p>
+                        <textarea id="desc-editor" onchange="saveDescription()" class="hidden w-full flex-grow bg-gray-800 text-white border border-gray-700 rounded p-2 text-sm resize-none focus:outline-none focus:border-blue-500" placeholder="Escribe una descripción sobre esta foto..."></textarea>
+                    </div>
+                    
+                    <div class="p-2 border-t border-gray-800 bg-black">
+                        <div class="text-xs text-gray-500 mb-2 text-center" id="photo-counter">0 / 0 fotos</div>
+                        <div id="thumbnails" class="flex md:flex-wrap gap-2 overflow-x-auto justify-center pb-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
