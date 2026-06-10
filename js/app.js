@@ -64,7 +64,7 @@ function renderMap() {
 
     // Insertar patrones de imágenes para estados con fotos
     appData.mapData.features.forEach(feature => {
-        const stateName = feature.properties.name;
+        const stateName = feature.properties.NOMGEO;
         const stateData = appData.states[stateName];
         
         if (stateData && stateData.photos && stateData.photos.length > 0) {
@@ -88,18 +88,18 @@ function renderMap() {
         .enter().append('path')
         .attr('d', path)
         .attr('fill', d => {
-            const stateData = appData.states[d.properties.name];
+            const stateData = appData.states[d.properties.NOMGEO];
             if (stateData && stateData.photos && stateData.photos.length > 0) {
-                return `url(#bg-${slugify(d.properties.name)})`;
+                return `url(#bg-${slugify(d.properties.NOMGEO)})`;
             }
             return 'rgba(128, 128, 128, 0.4)';
         })
         .attr('stroke', 'white')
         .attr('stroke-width', '1.5')
         .attr('class', 'cursor-pointer transition-all duration-300 hover:opacity-80 hover:stroke-[3px]')
-        .on('click', (event, d) => openGallery(d.properties.name))
+        .on('click', (event, d) => openGallery(d.properties.NOMGEO))
         .append('title')
-        .text(d => d.properties.name);
+        .text(d => d.properties.NOMGEO);
 }
 
 // Autenticación y Controles de Admin
