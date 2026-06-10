@@ -11,7 +11,7 @@ async function init() {
 
     if (!appData.mapData) {
         try {
-            const response = await fetch('./mexico.geojson');
+            const response = await fetch('./states_simple.geojson');
             appData.mapData = await response.json();
             saveData();
         } catch (err) {
