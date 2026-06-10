@@ -11,7 +11,7 @@ async function init() {
 
     if (!appData.mapData) {
         try {
-            const response = await fetch('https://cdn.jsdelivr.net/gh/codeforamerica/click_that_hood@master/public/data/mexico.geojson');
+            const response = await fetch('./mexico.geojson');
             appData.mapData = await response.json();
             saveData();
         } catch (err) {
