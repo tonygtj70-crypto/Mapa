@@ -19,6 +19,12 @@
         </h1>
         
         <div class="flex items-center gap-4">
+            
+            <audio id="bg-music" loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+            <button onclick="toggleMusic()" id="music-btn" class="text-gray-300 hover:text-white transition-colors" title="Reproducir/Pausar Música">
+                <i class="fas fa-play text-xl"></i>
+            </button>
+
             <div id="admin-header-controls" class="hidden flex gap-2">
                 <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-lg transition-colors flex items-center gap-2">
                     <i class="fas fa-download"></i> Respaldar Datos (.json)
@@ -54,7 +60,9 @@
             </div>
 
             <div id="admin-controls" class="hidden bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
-                <span class="text-yellow-400 font-bold text-sm"><i class="fas fa-user-shield"></i> Panel Admin</span>
+                <span class="text-yellow-400 font-bold text-sm">
+                    <i class="fas fa-user-shield"></i> Panel Admin (Recuerda Respaldar Datos antes de salir)
+                </span>
                 <div class="flex gap-3">
                     <button id="btn-delete-photo" onclick="deleteCurrentPhoto()" class="bg-red-600 hover:bg-red-500 text-white text-sm py-1 px-3 rounded flex items-center gap-1">
                         <i class="fas fa-trash"></i> Eliminar Foto
