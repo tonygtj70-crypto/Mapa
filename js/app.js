@@ -1,5 +1,4 @@
 // Variables Globales
-const STORAGE_KEY = 'tonys_trips_data';
 let appData = { mapData: null, states: {} };
 let isAdmin = false;
 let selectedState = null;
@@ -7,35 +6,31 @@ let currentPhotoIndex = 0;
 
 // Inicialización de la aplicación
 async function init() {
-    loadData();
+    // 1. Intentar cargar los datos remotos (fotos) primero, evitando caché
+    try {
+        const publicData = await fetch(`tonys_trips_backup.json?v=${new Date().getTime()}`);
+        if (publicData.ok) {
+            const fetchedData = await publicData.json();
+            appData.states = fetchedData.states || {}; 
+            if (fetchedData.mapData) {
+                appData.mapData = fetchedData.mapData;
+            }
+        }
+    } catch (err) {
+        console.log("No se encontró backup público, iniciando vacío.");
+    }
 
+    // 2. Cargar el mapa GeoJSON si no venía en el backup
     if (!appData.mapData) {
         try {
-            const response = await fetch('./states_simple.geojson');
+            const response = await fetch('states_simple.geojson');
             appData.mapData = await response.json();
-            saveData();
         } catch (err) {
-            alert("Error cargando el mapa inicial. Verifica tu conexión a internet.");
+            alert("Error cargando el mapa inicial.");
             return;
         }
     }
     renderMap();
-}
-
-// Persistencia de Datos en Servidor Estático (Local Storage)
-function loadData() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        try {
-            appData = JSON.parse(stored);
-        } catch (e) {
-            console.error('Error parseando datos guardados:', e);
-        }
-    }
-}
-
-function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
 }
 
 // Utilidad para limpiar nombres
@@ -62,7 +57,7 @@ function renderMap() {
     const path = d3.geoPath().projection(projection);
     const defs = svg.append('defs');
 
-    // Insertar patrones de imágenes para estados con fotos
+    // Insertar patrones de imágenes para estados con fotos usando NOMGEO
     appData.mapData.features.forEach(feature => {
         const stateName = feature.properties.NOMGEO;
         const stateData = appData.states[stateName];
@@ -82,7 +77,7 @@ function renderMap() {
         }
     });
 
-    // Dibujar Estados
+    // Dibujar Estados usando NOMGEO
     svg.selectAll('path')
         .data(appData.mapData.features)
         .enter().append('path')
@@ -102,6 +97,22 @@ function renderMap() {
         .text(d => d.properties.NOMGEO);
 }
 
+// Control de Música
+function toggleMusic() {
+    const audio = document.getElementById('bg-music');
+    const icon = document.querySelector('#music-btn i');
+    
+    if (audio.paused) {
+        audio.play();
+        icon.classList.remove('fa-play');
+        icon.classList.add('fa-pause');
+    } else {
+        audio.pause();
+        icon.classList.remove('fa-pause');
+        icon.classList.add('fa-play');
+    }
+}
+
 // Autenticación y Controles de Admin
 function promptLogin() {
     if (isAdmin) {
@@ -109,7 +120,7 @@ function promptLogin() {
         return;
     }
     const pass = prompt("Contraseña de administrador:");
-    if (pass === "700331") {
+    if (pass === "tony") {
         isAdmin = true;
         document.getElementById('admin-header-controls').classList.remove('hidden');
     } else if (pass !== null) {
@@ -135,7 +146,6 @@ function importData(event) {
     reader.onload = function(e) {
         try {
             appData = JSON.parse(e.target.result);
-            saveData();
             renderMap();
             alert("Datos restaurados correctamente.");
         } catch (err) {
@@ -296,7 +306,6 @@ function handleFileUpload(event) {
             });
             
             currentPhotoIndex = appData.states[selectedState].photos.length - 1;
-            saveData();
             updateGalleryUI();
             renderMap();
         };
@@ -310,7 +319,6 @@ function deleteCurrentPhoto() {
     if (confirm("¿Seguro que deseas eliminar esta foto?")) {
         appData.states[selectedState].photos.splice(currentPhotoIndex, 1);
         currentPhotoIndex = Math.max(0, currentPhotoIndex - 1);
-        saveData();
         updateGalleryUI();
         renderMap();
     }
@@ -320,7 +328,6 @@ function saveDescription() {
     const text = document.getElementById('desc-editor').value;
     if (appData.states[selectedState] && appData.states[selectedState].photos[currentPhotoIndex]) {
         appData.states[selectedState].photos[currentPhotoIndex].desc = text;
-        saveData();
     }
 }
 
