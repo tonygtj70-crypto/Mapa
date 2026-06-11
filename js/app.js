@@ -120,7 +120,7 @@ function promptLogin() {
         return;
     }
     const pass = prompt("Contraseña de administrador:");
-    if (pass === "tony") {
+    if (pass === "700331") {
         isAdmin = true;
         document.getElementById('admin-header-controls').classList.remove('hidden');
     } else if (pass !== null) {
