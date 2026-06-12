@@ -4,11 +4,17 @@ let isAdmin = false;
 let selectedState = null;
 let currentPhotoIndex = 0;
 
+// Configuración de GitHub
+const GITHUB_OWNER = 'tonygtj70-crypto';
+const GITHUB_REPO = 'Mapa';
+const GITHUB_TOKEN = localStorage.getItem('github-token') || '';
+const BACKUP_FILE_PATH = 'tonys_trips_backup.json';
+
 // Inicialización de la aplicación
 async function init() {
     // 1. Intentar cargar los datos remotos (fotos) primero, evitando caché
     try {
-        const publicData = await fetch(`tonys_trips_backup.json?v=${new Date().getTime()}`);
+        const publicData = await fetch(`${BACKUP_FILE_PATH}?v=${new Date().getTime()}`);
         if (publicData.ok) {
             const fetchedData = await publicData.json();
             appData.states = fetchedData.states || {}; 
@@ -123,20 +129,115 @@ function promptLogin() {
     if (pass === "700331") {
         isAdmin = true;
         document.getElementById('admin-header-controls').classList.remove('hidden');
+        
+        // Pedir token de GitHub si no está guardado
+        if (!localStorage.getItem('github-token')) {
+            promptGitHubToken();
+        }
     } else if (pass !== null) {
         alert("Contraseña incorrecta.");
     }
 }
 
+// Solicitar y guardar token de GitHub
+function promptGitHubToken() {
+    const token = prompt("Para guardar datos automáticamente en GitHub, ingresa tu Personal Access Token (PAT):\n\n" +
+        "1. Ve a https://github.com/settings/tokens/new\n" +
+        "2. Selecciona 'Generate new token (classic)'\n" +
+        "3. Dale estos permisos:\n   - repo (full control)\n   - read:user\n" +
+        "4. Cópialo y pégalo aquí (aparecerá solo una vez):");
+    
+    if (token) {
+        localStorage.setItem('github-token', token);
+        alert("✅ Token guardado. Los cambios se sincronizarán automáticamente con GitHub.");
+    }
+}
+
 // Exportar e Importar base de datos (.json)
-function exportData() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-    const a = document.createElement('a');
-    a.href = dataStr;
-    a.download = "tonys_trips_backup.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+async function exportData() {
+    const token = localStorage.getItem('github-token');
+    
+    if (!token) {
+        alert("Necesitas un Personal Access Token de GitHub para guardar automáticamente.\n\n" +
+            "1. Ve a https://github.com/settings/tokens/new\n" +
+            "2. Selecciona 'Generate new token (classic)'\n" +
+            "3. Dale permisos 'repo'\n" +
+            "4. Se te pedirá que lo ingreses");
+        promptGitHubToken();
+        return;
+    }
+
+    try {
+        // Mostrar cargando
+        const btn = document.querySelector('[onclick="exportData()"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        btn.disabled = true;
+
+        // 1. Obtener el SHA del archivo actual (si existe)
+        let fileSha = null;
+        try {
+            const getResponse = await fetch(
+                `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${BACKUP_FILE_PATH}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+            if (getResponse.ok) {
+                const fileData = await getResponse.json();
+                fileSha = fileData.sha;
+            }
+        } catch (err) {
+            console.log("Archivo no existe aún, se creará nuevo.");
+        }
+
+        // 2. Preparar contenido en base64
+        const fileContent = JSON.stringify(appData, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(fileContent)));
+
+        // 3. Subir/actualizar archivo
+        const uploadResponse = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${BACKUP_FILE_PATH}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `🗺️ Backup manual - ${new Date().toLocaleString('es-ES')}`,
+                    content: encodedContent,
+                    sha: fileSha || undefined,
+                    branch: 'main'
+                })
+            }
+        );
+
+        if (uploadResponse.ok) {
+            btn.innerHTML = '<i class="fas fa-check"></i> ¡Guardado!';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            const error = await uploadResponse.json();
+            alert("❌ Error al guardar: " + (error.message || "Error desconocido"));
+            console.error(error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+    } catch (err) {
+        alert("❌ Error: " + err.message);
+        console.error(err);
+        const btn = document.querySelector('[onclick="exportData()"]');
+        btn.innerHTML = '<i class="fas fa-download"></i> Respaldar Datos (.json)';
+        btn.disabled = false;
+    }
 }
 
 function importData(event) {
@@ -232,7 +333,7 @@ function renderThumbnails(photos) {
     
     photos.forEach((photo, index) => {
         const thumb = document.createElement('div');
-        thumb.className = `w-14 h-14 bg-gray-800 border-2 flex-shrink-0 cursor-pointer overflow-hidden rounded ${index === currentPhotoIndex ? 'border-blue-500' : 'border-transparent opacity-60 hover:opacity-100'}`;
+        thumb.className = `w-14 h-14 bg-gray-800 border-2 flex-shrink-0 cursor-pointer overflow-hidden rounded ${index === currentPhotoIndex ? 'border-blue-500' : 'border-transparent opacity-60 hover:opacity-100'} transition-opacity`;
         thumb.onclick = () => {
             currentPhotoIndex = index;
             updateGalleryUI();
@@ -308,6 +409,9 @@ function handleFileUpload(event) {
             currentPhotoIndex = appData.states[selectedState].photos.length - 1;
             updateGalleryUI();
             renderMap();
+            
+            // Guardar automáticamente en GitHub después de agregar foto
+            saveToGitHub();
         };
         img.src = e.target.result;
     };
@@ -321,6 +425,9 @@ function deleteCurrentPhoto() {
         currentPhotoIndex = Math.max(0, currentPhotoIndex - 1);
         updateGalleryUI();
         renderMap();
+        
+        // Guardar automáticamente en GitHub después de eliminar foto
+        saveToGitHub();
     }
 }
 
@@ -328,6 +435,64 @@ function saveDescription() {
     const text = document.getElementById('desc-editor').value;
     if (appData.states[selectedState] && appData.states[selectedState].photos[currentPhotoIndex]) {
         appData.states[selectedState].photos[currentPhotoIndex].desc = text;
+        
+        // Guardar automáticamente en GitHub después de cambiar descripción
+        saveToGitHub();
+    }
+}
+
+// Función auxiliar para guardar sin mostrar UI
+async function saveToGitHub() {
+    const token = localStorage.getItem('github-token');
+    if (!token) return;
+
+    try {
+        // Obtener SHA actual
+        let fileSha = null;
+        try {
+            const getResponse = await fetch(
+                `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${BACKUP_FILE_PATH}`,
+                {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                }
+            );
+            if (getResponse.ok) {
+                const fileData = await getResponse.json();
+                fileSha = fileData.sha;
+            }
+        } catch (err) {
+            console.log("Primera vez creando archivo");
+        }
+
+        // Preparar contenido
+        const fileContent = JSON.stringify(appData, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(fileContent)));
+
+        // Subir
+        await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${BACKUP_FILE_PATH}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `🗺️ Auto-backup - ${new Date().toLocaleString('es-ES')}`,
+                    content: encodedContent,
+                    sha: fileSha || undefined,
+                    branch: 'main'
+                })
+            }
+        );
+
+        console.log("✅ Guardado automático en GitHub");
+    } catch (err) {
+        console.error("Error en guardado automático:", err);
     }
 }
 
